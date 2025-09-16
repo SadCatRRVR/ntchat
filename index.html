@@ -163,9 +163,19 @@
             const input = document.getElementById('input');
             input.onkeypress = event => {
                 if (event.key !== 'Enter') return;
-                connection.setRemoteDescription(JSON.parse(input.value));
-                input.value = '';
-                input.onkeypress = undefined;
+                try {
+                    let value = input.value.trim();
+                    if (value.startsWith('#')) {
+                        value = value.substring(1);
+                    }
+                    const decoded = decodeURIComponent(value);
+                    const remoteDesc = JSON.parse(decoded);
+                    connection.setRemoteDescription(remoteDesc);
+                    input.value = '';
+                    input.onkeypress = undefined;
+                } catch (e) {
+                    print('[Error] Invalid connection data. Please paste the exact JSON signaling string.');
+                }
             }
         }
 
