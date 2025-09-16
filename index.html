@@ -1,181 +1,90 @@
 <!doctype html>
-<html lang='en' style='height:100%'>
+<html lang='en' style='height:100%; background:#101010;'>
 <head>
     <meta name="viewport" content="width=device-width, minimum-scale=1, initial-scale=1, user-scalable=yes">
-    <title>Encryption Cr0Wz</title>
+    <title>Encrypted Chat by S@dC@t</title>
     <style>
         body {
-            background-color: #000000;
-            color: #00FF00;
-            font-family: 'Courier New', Courier, monospace;
             display: flex;
             flex-direction: column;
             height: 100%;
             margin: 0;
+            background: #101010;
+            color: #00ff00;
+            font-family: 'Fira Mono', 'Consolas', 'Menlo', 'Monaco', 'Courier New', monospace;
         }
         h1 {
-            text-align: center;
-            font-size: 3em;
-            margin: 20px 0;
+            color: #00ff00;
+            text-shadow: 0 0 8px #00ff00;
+            font-family: inherit;
+            letter-spacing: 2px;
+            font-size: 2em;
+            margin: 0.5em 0;
         }
-        textarea {
+        div {
+            background: #181818;
+            padding: 1em;
+            border-bottom: 2px solid #222;
+        }
+        textarea#output {
             flex-grow: 1;
             resize: none;
-            background-color: #111111;
-            color: #00FF00;
-            border: 1px solid #00FF00;
-            padding: 10px;
-            font-size: 1.2em;
-            border-radius: 5px;
+            background: #000;
+            color: #00ff00;
+            font-family: inherit;
+            font-size: 1em;
+            border: 1px solid #0f0;
+            outline: none;
+            box-shadow: 0 0 8px #0f0;
         }
-        input {
-            background-color: #111111;
-            color: #00FF00;
-            border: 1px solid #00FF00;
-            padding: 10px;
-            font-size: 1.2em;
-            width: 100%;
-            border-radius: 5px;
+        input#input {
+            background: #000;
+            color: #00ff00;
+            font-family: inherit;
+            border: 1px solid #0f0;
+            outline: none;
+            box-shadow: 0 0 8px #0f0;
+            padding: 0.5em;
+            font-size: 1em;
         }
-        button {
-            background-color: #222222;
-            color: #00FF00;
-            border: 2px solid #00FF00;
-            padding: 10px;
-            cursor: pointer;
-            border-radius: 5px;
-            margin-top: 10px;
-        }
-        button:hover {
-            background-color: #00FF00;
-            color: #000000;
-        }
-        .chat-window {
-            padding: 20px;
-            background-color: #111111;
-            border: 1px solid #00FF00;
-            height: 400px;
-            overflow-y: scroll;
-            margin-bottom: 10px;
-        }
-        .message {
-            margin: 10px 0;
-            font-size: 1.2em;
-        }
-        .message.sent {
-            color: #00FF00;
-        }
-        .message.received {
-            color: #00FF00;
-        }
-        .message.system {
-            color: #FFFF00;
-        }
-        .message.error {
-            color: #FF0000;
+        ::selection {
+            background: #0f0;
+            color: #000;
         }
     </style>
 </head>
 <body>
-    <div><h1>S@dC@tZ Encryption</h1></div>
-    <input id="password" type="text" placeholder="Enter shared password">
-    <div class="chat-window" id="chat-window"></div>
-    <input id="input" type="text" placeholder="Type your message..." />
-
+    <div><h1>Encrypted Chat - S@dC@tZ</h1></div>
+    <textarea id='output' style='flex-grow:1; resize:none' readonly></textarea>
+    <input id='input' type='text'>
     <script>
-        // --- AES encryption helpers using Web Crypto API ---
-        async function getKey(password) {
-            const enc = new TextEncoder();
-            const keyMaterial = await crypto.subtle.importKey(
-                "raw", enc.encode(password), "PBKDF2", false, ["deriveKey"]
-            );
-            return crypto.subtle.deriveKey(
-                {
-                    name: "PBKDF2",
-                    salt: enc.encode("s@lt"),
-                    iterations: 100000,
-                    hash: "SHA-256"
-                },
-                keyMaterial,
-                { name: "AES-GCM", length: 256 },
-                false,
-                ["encrypt", "decrypt"]
-            );
-        }
-
-        async function encryptMessage(password, plaintext) {
-            const key = await getKey(password);
-            const enc = new TextEncoder();
-            const iv = crypto.getRandomValues(new Uint8Array(12));
-            const ciphertext = await crypto.subtle.encrypt(
-                { name: "AES-GCM", iv },
-                key,
-                enc.encode(plaintext)
-            );
-            return btoa(JSON.stringify({ iv: Array.from(iv), data: Array.from(new Uint8Array(ciphertext)) }));
-        }
-
-        async function decryptMessage(password, payload) {
-            const key = await getKey(password);
-            const obj = JSON.parse(atob(payload));
-            const iv = new Uint8Array(obj.iv);
-            const data = new Uint8Array(obj.data);
-            try {
-                const plainBuffer = await crypto.subtle.decrypt(
-                    { name: "AES-GCM", iv },
-                    key,
-                    data
-                );
-                return new TextDecoder().decode(plainBuffer);
-            } catch (e) {
-                return "[Decryption failed]";
-            }
-        }
-
-        function appendMessage(text, type="received") {
-            const messageDiv = document.createElement('div');
-            messageDiv.classList.add('message', type);
-            messageDiv.textContent = text;
-            document.getElementById('chat-window').appendChild(messageDiv);
-        }
-
         function print(str) {
-            appendMessage(str, "system");
+            const output = document.getElementById('output');
+            output.append(str + '\r\n');
+            output.scrollTop = output.scrollHeight;
         }
 
-        // Password handshake state
-        let handshakeOK = false;
-        let handshakeComplete = false;
-
-        // WebRTC setup
         async function runHost(connection) {
             print('Initializing...');
-            const dataChannel = connection.createDataChannel("secureChannel");
+            const dataChannel = connection.createDataChannel(null);
             dataChannel.onopen = event => onConnectionEstablished(dataChannel);
             connection.setLocalDescription(await connection.createOffer());
-            connection.oniceconnectionstatechange = () => print('Connection: ' + connection.iceConnectionState);
+            connection.oniceconnectionstatechange = () => print('Connection status: ' + connection.iceConnectionState);
             connection.onicegatheringstatechange = () => {
                 if (connection.iceGatheringState !== 'complete') return;
-                print('Send this URL to peer:');
+                print('To make a connection:')
+                print('1. Send the following URL to the other person.')
+                print('2. Type the result in the bottom text field.');
+                print('');
                 print(window.location.href + '#' + encodeURIComponent(JSON.stringify(connection.localDescription)));
             };
 
             const input = document.getElementById('input');
             input.onkeypress = event => {
                 if (event.key !== 'Enter') return;
-                try {
-                    let value = input.value.trim();
-                    if (value.startsWith('#')) {
-                        value = value.substring(1);
-                    }
-                    const decoded = decodeURIComponent(value);
-                    const remoteDesc = JSON.parse(decoded);
-                    connection.setRemoteDescription(remoteDesc);
-                    input.value = '';
-                    input.onkeypress = undefined;
-                } catch (e) {
-                    print('[Error] Invalid connection data. Please paste the exact JSON signaling string.');
-                }
+                connection.setRemoteDescription(JSON.parse(input.value));
+                input.value = '';
+                input.onkeypress = undefined;
             }
         }
 
@@ -183,68 +92,37 @@
             const offer = JSON.parse(decodeURIComponent(offerString));
             connection.setRemoteDescription(new RTCSessionDescription(offer));
             connection.setLocalDescription(await connection.createAnswer());
-            connection.oniceconnectionstatechange = () => print('Connection: ' + connection.iceConnectionState);
+            connection.oniceconnectionstatechange = () => print('Connection status: ' + connection.iceConnectionState);
             connection.onicegatheringstatechange = () => {
                 if (connection.iceGatheringState !== 'complete') return;
-                print('Send this string back to peer:');
+                print('To make a connection, send the following string to the other person.');
+                print('');
                 print(JSON.stringify(connection.localDescription));
             };
             connection.ondatachannel = event => {
-                event.channel.onopen = () => onConnectionEstablished(event.channel);
+                event.channel.onopen = onConnectionEstablished(event.channel);
             };
         }
 
-        // Updated handshake-enabled chat
         function onConnectionEstablished(dataChannel) {
+            dataChannel.onmessage = event => print('Received : ' + event.data);
             const input = document.getElementById('input');
-            const passwordField = document.getElementById('password');
-            handshakeOK = false;
-            handshakeComplete = false;
-            input.disabled = true;
-
-            // Send encrypted handshake string
-            encryptMessage(passwordField.value, "handshake").then(encrypted => {
-                dataChannel.send(encrypted);
-            });
-
-            dataChannel.onmessage = async event => {
-                if (!handshakeComplete) {
-                    const test = await decryptMessage(passwordField.value, event.data);
-                    if (test === "handshake") {
-                        handshakeOK = true;
-                        handshakeComplete = true;
-                        appendMessage("[✅ Secure password verified. You may start chatting!]", "system");
-                        input.disabled = false;
-                    } else {
-                        handshakeOK = false;
-                        handshakeComplete = true;
-                        appendMessage("[❌ Password mismatch! You cannot chat. Refresh and try again.]", "error");
-                        input.disabled = true;
-                    }
-                    return;
-                }
-
-                if (handshakeOK) {
-                    const decrypted = await decryptMessage(passwordField.value, event.data);
-                    appendMessage("Received: " + decrypted, "received");
-                }
-            };
-
-            input.onkeypress = async event => {
-                if (!handshakeOK || event.key !== 'Enter') return;
-                const encrypted = await encryptMessage(passwordField.value, input.value);
-                dataChannel.send(encrypted);
-                appendMessage("Sent: " + input.value, "sent");
+            input.onkeypress = event => {
+                if (event.key !== 'Enter') return;
+                dataChannel.send(input.value);
+                print('Sent: ' + input.value);
                 input.value = '';
-            };
+            }
         }
 
         window.onhashchange = () => location.reload();
         window.onerror = (message, source, lineno, colno, error) => {
-            appendMessage('Error: ' + error.stack, "error");
+            print(error.stack);
+            print('Session aborted. Refresh to start a new session.')
+            input.onkeypress = undefined;
         };
 
-        const connection = new RTCPeerConnection({ iceServers: [{ urls: ['stun:stun.l.google.com:19302'] }] });
+        const connection = new RTCPeerConnection({ 'iceServers': [{ 'urls': ['stun:stun.l.google.com:19302'] }] });
 
         if (window.location.hash)
             runGuest(connection, window.location.hash.substring(1));
